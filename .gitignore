@@ -1,0 +1,38 @@
+# Ambientes virtuais
+venv/
+env/
+meuenv/
+.venv/
+
+# Cache Python
+__pycache__/
+*.pyc
+
+# Arquivos de pacotes
+*.egg-info/
+
+# Modelos, checkpoints e features pesados
+*.h5
+*.pt
+*.pth
+*.npy
+*.npz
+*.joblib
+
+# Logs
+logs/
+*.log
+
+# VSCode
+.vscode/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Sistema
+.DS_Store
+
+# Resultados gerados
+matriz_confusao_ensemble.png
+resultados/
+outputs/

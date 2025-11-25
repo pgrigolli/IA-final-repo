@@ -1,7 +1,5 @@
-# ================================================================
-#  Simpsons Classification - Xception + ViT + 20 Classifiers
-#  Autor: Thiago & Gepeto 🟨🟦
-# ================================================================
+#  Classificador Simpsons
+#  Autores: Artur Juliani, Gustavo Batista
 
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
