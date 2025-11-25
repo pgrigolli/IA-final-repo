@@ -1,5 +1,8 @@
-#  Classificador Simpsons
-#  Autores: Artur Juliani, Gustavo Batista
+# Classificador Simpsons
+# Autores:
+# Artur Bento de Carvalho
+# Pedro Chouery Grigolli
+# Thiago Riemma Carbonera
 
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
@@ -30,20 +33,15 @@ import timm
 import torchvision.transforms as T
 
 
-# ================================================================
-#               CONFIGURAÇÕES IMPORTANTES
-# ================================================================
-
+# Configurações
 TRAIN_DIR = "simpsons/Train"
 TEST_DIR  = "simpsons/Valid"
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-print(f"🟢 Rodando no dispositivo: {DEVICE.upper()}")
+print(f"Rodando no dispositivo: {DEVICE.upper()}")
 
 
-# ================================================================
-#               CARREGAR MODELOS DE DEEP FEATURES
-# ================================================================
+# Carregando Modelos de Deep Features
 
 print("\nCarregando Xception...")
 xception = Xception(weights="imagenet", include_top=False, pooling="avg")
@@ -62,9 +60,7 @@ vit_transform = T.Compose([
 ])
 
 
-# ================================================================
-#                   FUNÇÃO DE EXTRAÇÃO DE FEATURES
-# ================================================================
+# Função Para Extrair Features
 
 def get_label_from_filename(fname):
     return re.match(r"[a-zA-Z]+", fname).group(0)
@@ -74,7 +70,7 @@ def extract_features(folder):
     Y = []
 
     files = os.listdir(folder)
-    print(f"\n🔍 Extraindo features de {folder} ({len(files)} arquivos)")
+    print(f"\nExtraindo features de {folder} ({len(files)} arquivos)")
 
     for fname in tqdm(files):
         if not fname.lower().endswith((".jpg", ".jpeg", ".png", ".bmp")):
@@ -85,22 +81,22 @@ def extract_features(folder):
 
         img = cv2.imread(path)
         if img is None:
-            print(f"❌ Erro ao abrir {path}")
+            print(f"Erro ao abrir {path}")
             continue
 
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-        # ----------- XCEPTION -----------
+        # XCEPTION
         img_x = cv2.resize(img, (299, 299))
         x_in = preprocess_xception(img_x.astype("float32"))
         feat_x = xception.predict(np.expand_dims(x_in, 0), verbose=0).flatten()
 
-        # ----------- VIT -----------
+        # VIT
         img_v = vit_transform(img).unsqueeze(0).to(DEVICE)
         with torch.no_grad():
             feat_v = vit(img_v).cpu().numpy().flatten()
 
-        # -------- CONCAT --------
+        # CONCAT
         features = np.concatenate([feat_x, feat_v])
         X.append(features)
         Y.append(label)
@@ -108,31 +104,25 @@ def extract_features(folder):
     return np.array(X), np.array(Y)
 
 
-# ================================================================
-#                     CARREGAR O DATASET
-# ================================================================
+# Carregando Dataset
 
-print("\n📥 Extraindo Features...")
+print("\nExtraindo Features...")
 X_train, y_train = extract_features(TRAIN_DIR)
 X_test, y_test   = extract_features(TEST_DIR)
 
-print("\n📊 Shapes:")
+print("\nShapes:")
 print("X_train:", X_train.shape)
 print("X_test :", X_test.shape)
 
 
-# ================================================================
-#               ENCODER DE LABELS
-# ================================================================
+# Enconder das Labels
 
 le = LabelEncoder()
 y_train_enc = le.fit_transform(y_train)
 y_test_enc  = le.transform(y_test)
 
 
-# ================================================================
-#               DEFINIÇÃO DOS 20 CLASSIFICADORES
-# ================================================================
+# Definindo os 20 Classificadores
 
 classifiers = {
     "SVM_rbf_C1":      SVC(kernel="rbf", C=1, probability=True),
@@ -161,16 +151,14 @@ classifiers = {
 }
 
 
-# ================================================================
-#               TREINAR OS 20 CLASSIFICADORES
-# ================================================================
+# Treinando os Classificadores
 
 results = {}
 
-print("\n🚀 Treinando 20 classificadores...\n")
+print("\nTreinando 20 classificadores...\n")
 
 for name, clf in classifiers.items():
-    print(f"\n🔵 Treinando {name}...")
+    print(f"\nTreinando {name}...")
     clf.fit(X_train, y_train_enc)
     
     pred = clf.predict(X_test)
@@ -179,14 +167,12 @@ for name, clf in classifiers.items():
 
     results[name] = (acc * 100, f1 * 100)
 
-    print(f"✔ {name}: ACC={acc*100:.2f}% | F1={f1*100:.2f}%")
+    print(f"{name}: ACC={acc*100:.2f}% | F1={f1*100:.2f}%")
 
 
-# ================================================================
-#                       ENSEMBLE FINAL
-# ================================================================
+# Ensemble Final
 
-print("\n🤝 Treinando Ensemble (voting soft)...")
+print("\nTreinando Ensemble (voting soft)...")
 
 ensemble = VotingClassifier(
     estimators=[(name, clf) for name, clf in classifiers.items()],
@@ -199,23 +185,28 @@ pred_ens = ensemble.predict(X_test)
 acc_ens = accuracy_score(y_test_enc, pred_ens)
 f1_ens  = f1_score(y_test_enc, pred_ens, average="weighted")
 
-print(f"\n🌟 ENSEMBLE RESULTADOS:")
+print(f"\nENSEMBLE RESULTADOS:")
 print(f"Accuracy: {acc_ens*100:.2f}%")
 print(f"F1-score: {f1_ens*100:.2f}%")
 
 
-# ================================================================
-#                     MATRIZ DE CONFUSÃO
-# ================================================================
+# Matriz de Confusão
 
 cm = confusion_matrix(y_test_enc, pred_ens)
 
-plt.figure(figsize=(8,6))
+# Exibe matriz de confusão com nomes das classes nos eixos
+classes = le.classes_
+plt.figure(figsize=(10,8))
 plt.imshow(cm, cmap="Blues")
 plt.title("Matriz de Confusão - Ensemble")
 plt.xlabel("Predito")
 plt.ylabel("Real")
 plt.colorbar()
+
+# Ajusta ticks para mostrar os nomes dos personagens
+ticks = np.arange(len(classes))
+plt.xticks(ticks, classes, rotation=45, ha="right")
+plt.yticks(ticks, classes)
 
 # --- Colocar números nos quadrados ---
 for i in range(cm.shape[0]):
@@ -228,4 +219,4 @@ plt.tight_layout()
 plt.savefig("matriz_confusao_ensemble.png", dpi=300)
 plt.show()
 
-print("\n📁 Matriz de confusão salva em: matriz_confusao_ensemble.png")
+print("\nMatriz de confusão salva em: matriz_confusao_ensemble.png")
