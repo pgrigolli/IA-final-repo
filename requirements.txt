@@ -1,0 +1,10 @@
+tensorflow
+torch
+timm
+opencv-python
+matplotlib
+numpy
+scikit-learn
+joblib
+tqdm
+pillow
